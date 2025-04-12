@@ -14,6 +14,7 @@ import { OrderModule } from './module/order.module';
 import { OrderItemModule } from './module/order-item.module';
 import { OrderStatusModule } from './module/order-status.module';
 import { ProductStatusModule } from './module/product-status.module';
+import { AuthController } from './controller/auth.controller';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { ProductStatusModule } from './module/product-status.module';
     OrderStatusModule,
     ProductStatusModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, AuthController],
   providers: [AppService],
 })
 export class AppModule {}
