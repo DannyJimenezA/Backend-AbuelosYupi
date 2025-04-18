@@ -15,6 +15,8 @@ import { OrderItemModule } from './module/order-item.module';
 import { OrderStatusModule } from './module/order-status.module';
 import { ProductStatusModule } from './module/product-status.module';
 import { AuthController } from './controller/auth.controller';
+import { PublicModule } from './module/public.module';
+import { DiscountModule } from './module/discount.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { AuthController } from './controller/auth.controller';
     OrderItemModule,
     OrderStatusModule,
     ProductStatusModule,
+    PublicModule,
+    DiscountModule,
   ],
   controllers: [AppController, AuthController],
   providers: [AppService],

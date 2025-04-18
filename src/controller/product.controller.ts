@@ -8,6 +8,7 @@ import {
   Param,
   Put,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ProductService } from '../service/product.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -20,15 +21,36 @@ import { ProductStatus } from '../entities/product-status.entity';
 export class ProductController {
   constructor(private readonly service: ProductService) {}
 
-  @Get()
-  findAll() {
-    return this.service.findAll();
+// @Get()
+// findAll(@Query('categoryId') categoryId?: string) {
+//   const parsedId = parseInt(categoryId);
+//   if (!isNaN(parsedId)) {
+//     return this.service.findByCategory(parsedId);
+//   }
+//   return this.service.findAll();
+// }
+@Get('promotions') 
+findPromotions() {
+  return this.service.findPromotions();
+}
+
+@Get()
+findAll(@Query('categoryId') categoryId?: string) {
+  const parsedId = parseInt(categoryId);
+  if (!isNaN(parsedId)) {
+    return this.service.findByCategory(parsedId);
   }
+  return this.service.findAll();
+}
+
+
+
 
   @Get(':id')
   findOne(@Param('id') id: number) {
     return this.service.findOne(+id);
   }
+
 
   @Post()
   @UseInterceptors(
@@ -60,9 +82,10 @@ export class ProductController {
       description: body.description,
       price: parseFloat(body.price),
       stock: parseInt(body.stock),
-      category,
-      status,
+      categoryId: parseInt(body.categoryId),
+      statusId: parseInt(body.statusId),
       imageUrl,
+      discountId: body.discountId ? parseInt(body.discountId) : undefined,
     };
 
     return this.service.create(data);
