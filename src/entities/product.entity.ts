@@ -46,6 +46,7 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Category } from './category.entity';
 import { ProductStatus } from './product-status.entity';
@@ -75,16 +76,20 @@ export class Product {
   @ManyToOne(() => Category, category => category.products)
   category: Category;
 
-  @ManyToOne(() => ProductStatus, status => status.products)
-  status: ProductStatus;
+  // @ManyToOne(() => ProductStatus, status => status.products)
+  // status: ProductStatus;
+  @ManyToOne(() => ProductStatus, { eager: true })
+status: ProductStatus;
+
 
   @OneToMany(() => OrderItem, item => item.product)
   orderItems: OrderItem[];
 
-//   @ManyToOne(() => Discount, discount => discount.products, { nullable: true })
+  @ManyToOne(() => Discount, (discount) => discount.products, { nullable: true })
+  discount: Discount;
+  
+// @ManyToOne(() => Discount, { nullable: true })
 // discount: Discount;
-@ManyToOne(() => Discount, { nullable: true })
-discount: Discount;
 
   // 💡 Getter virtual para obtener el precio con descuento aplicado
   get finalPrice(): number {

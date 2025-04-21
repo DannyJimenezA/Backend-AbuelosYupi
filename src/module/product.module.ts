@@ -6,7 +6,6 @@ import { ProductService } from '../service/product.service';
 import { ProductController } from '../controller/product.controller';
 import { Category } from '../entities/category.entity';
 import { ProductStatus } from '../entities/product-status.entity';
-import { DiscountModule } from './discount.module';
 import { Discount } from 'src/entities/discount.entity';
 
 @Module({

@@ -26,13 +26,17 @@ import { DiscountModule } from './module/discount.module';
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT),
+      port: parseInt(process.env.DB_PORT, 10),
       username: process.env.DB_USER,
       password: process.env.DB_PASS,
       database: process.env.DB_NAME,
       autoLoadEntities: true,
       synchronize: true,
     }),
+    
+    
+    
+    
 
     // Módulos personalizados
     UserModule,

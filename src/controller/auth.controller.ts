@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../service/user.service';
 import * as bcrypt from 'bcrypt';
+import { CreateUserDto } from 'src/dto/create-user.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -30,5 +31,10 @@ export class AuthController {
         email: user.email,
       },
     };
+  }
+
+  @Post('register')
+  register(@Body() body: CreateUserDto) {
+    return this.userService.create(body);
   }
 }

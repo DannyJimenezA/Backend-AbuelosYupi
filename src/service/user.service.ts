@@ -26,27 +26,53 @@ export class UserService {
     return this.userRepo.findOne({ where: { email }, relations: ['role'] });
   }
 
-  async create(data: Partial<User>) {
+  // async create(data: Partial<User>) {
+  //   const salt = await bcrypt.genSalt();
+  //   const hashedPassword = await bcrypt.hash(data.passwordHash, salt);
+
+  //   const role = await this.roleRepo.findOneBy({ id: 2 }); 
+
+  //   const newUser = this.userRepo.create({
+  //     ...data,
+  //     passwordHash: hashedPassword,
+  //     role,
+  //   });
+
+  //   const saved = await this.userRepo.save(newUser);
+
+  //   // ✅ Devuelve con relación de rol para Flutter
+  //   return this.userRepo.findOne({
+  //     where: { id: saved.id },
+  //     relations: ['role'],
+  //   });
+
+  // }
+  async create(data: Partial<User> & { password: string }) {
+    const existing = await this.userRepo.findOne({ where: { email: data.email } });
+    if (existing) throw new Error('Este correo ya está registrado');
+  
     const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(data.passwordHash, salt);
-
-    const role = await this.roleRepo.findOneBy({ id: 2 }); 
-
+    const hashedPassword = await bcrypt.hash(data.password, salt);
+  
+    const role = await this.roleRepo.findOneBy({ id: 2 });
+  
+    const { password, ...rest } = data;
+  
     const newUser = this.userRepo.create({
-      ...data,
+      ...rest,
       passwordHash: hashedPassword,
       role,
     });
-
+  
     const saved = await this.userRepo.save(newUser);
-
-    // ✅ Devuelve con relación de rol para Flutter
+  
     return this.userRepo.findOne({
       where: { id: saved.id },
       relations: ['role'],
     });
-
   }
+  
+  
 
   update(id: number, data: Partial<User>) {
     return this.userRepo.update(id, data);

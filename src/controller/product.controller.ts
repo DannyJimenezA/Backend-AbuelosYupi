@@ -16,6 +16,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Category } from '../entities/category.entity';
 import { ProductStatus } from '../entities/product-status.entity';
+import { Product } from 'src/entities/product.entity';
 
 @Controller('products')
 export class ProductController {
@@ -91,10 +92,15 @@ findAll(@Query('categoryId') categoryId?: string) {
     return this.service.create(data);
   }
 
+  // @Put(':id')
+  // update(@Param('id') id: number, @Body() body) {
+  //   return this.service.update(+id, body);
+  // }
   @Put(':id')
-  update(@Param('id') id: number, @Body() body) {
-    return this.service.update(+id, body);
-  }
+update(@Param('id') id: number, @Body() body: Partial<Product>) {
+  return this.service.update(+id, body);
+}
+
 
   @Delete(':id')
   delete(@Param('id') id: number) {
