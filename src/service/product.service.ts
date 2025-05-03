@@ -26,50 +26,57 @@ export class ProductService {
     });
   }
 
+  // async create(data: Partial<Product> & { categoryId: number; statusId: number; discountId?: number }) {
+  //   const product = this.repo.create({
+  //     name: data.name,
+  //     description: data.description,
+  //     price: Number(data.price),
+  //     stock: data.stock,
+  //     imageUrl: data.imageUrl,
+  //     category: { id: data.categoryId },
+  //     status: {
+  //       id: data.stock === 0 ? AGOTADO_STATUS_ID : data.statusId,
+  //     },
+  //   });
+
+  //   if (data.discountId) {
+  //     const discount = await this.discountRepo.findOne({ where: { id: data.discountId } });
+  //     if (!discount) throw new Error('Descuento no encontrado');
+  //     product.discount = discount;
+  //   }
+
+  //   return this.repo.save(product);
+  // }
+
   async create(data: Partial<Product> & { categoryId: number; statusId: number; discountId?: number }) {
+    const price = parseFloat(String(data.price));
+    const stock = parseInt(String(data.stock), 10);
+  
+    if (isNaN(price)) throw new Error('Precio inválido');
+    if (isNaN(stock)) throw new Error('Stock inválido');
+  
     const product = this.repo.create({
       name: data.name,
       description: data.description,
-      price: Number(data.price),
-      stock: data.stock,
+      price,
+      stock,
       imageUrl: data.imageUrl,
       category: { id: data.categoryId },
       status: {
-        id: data.stock === 0 ? AGOTADO_STATUS_ID : data.statusId,
+        id: stock === 0 ? AGOTADO_STATUS_ID : data.statusId,
       },
     });
-
+  
     if (data.discountId) {
       const discount = await this.discountRepo.findOne({ where: { id: data.discountId } });
       if (!discount) throw new Error('Descuento no encontrado');
       product.discount = discount;
     }
-
+  
     return this.repo.save(product);
   }
+  
 
-  // async update(id: number, data: Partial<Product>) {
-  //   const product = await this.repo.findOne({
-  //     where: { id },
-  //     relations: ['status'],
-  //   });
-
-  //   if (!product) throw new Error('Producto no encontrado');
-
-  //   // Aplica los cambios primero
-  //   Object.assign(product, data);
-
-  //   // Lógica para actualizar estado según el stock
-  //   if (typeof data.stock === 'number') {
-  //     if (data.stock === 0) {
-  //       product.status = { id: AGOTADO_STATUS_ID } as ProductStatus;
-  //     } else if (product.status.id === AGOTADO_STATUS_ID) {
-  //       product.status = { id: ACTIVO_STATUS_ID } as ProductStatus;
-  //     }
-  //   }
-
-  //   return this.repo.save(product);
-  // }
   async update(id: number, data: Partial<Product>) {
     console.log('📦 BODY recibido en update:', data); // 👈 AGREGALO
   

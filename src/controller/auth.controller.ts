@@ -22,15 +22,28 @@ export class AuthController {
     }
 
     // Opcional: podrías generar un JWT aquí
+    // return {
+    //   message: 'Login exitoso ✅',
+    //   user: {
+    //     id: user.id,
+    //     name: user.name,
+    //     role: user.role.name,
+    //     email: user.email,
+    //   },
+    // };
     return {
       message: 'Login exitoso ✅',
       user: {
         id: user.id,
         name: user.name,
-        role: user.role.name,
         email: user.email,
+        role: {
+          id: user.role.id,
+          name: user.role.name,
+        },
       },
     };
+    
   }
 
   @Post('register')
