@@ -7,9 +7,12 @@ import { OrderItem } from '../entities/order-item.entity';
 import { User } from '../entities/user.entity';
 import { OrderStatus } from '../entities/order-status.entity';
 import { Product } from 'src/entities/product.entity';
+import { OrderStatusModule } from './order-status.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderItem,Product, User, OrderStatus])],
+  imports: [TypeOrmModule.forFeature([Order, OrderItem,Product, User, OrderStatus]),
+  OrderStatusModule,
+],
   providers: [OrderService],
   controllers: [OrderController],
   exports: [OrderService],

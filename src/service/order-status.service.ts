@@ -13,7 +13,11 @@ export class OrderStatusService {
   findAll() {
     return this.repo.find();
   }
-
+  async findByName(name: string): Promise<OrderStatus> {
+    const status = await this.repo.findOne({ where: { name } });
+    if (!status) throw new Error(`Estado '${name}' no encontrado`);
+    return status;
+  }
   create(data: Partial<OrderStatus>) {
     return this.repo.save(data);
   }

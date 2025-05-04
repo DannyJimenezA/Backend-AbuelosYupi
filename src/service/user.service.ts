@@ -47,16 +47,43 @@ export class UserService {
   //   });
 
   // }
-  async create(data: Partial<User> & { password: string }) {
+  // async create(data: Partial<User> & { password: string }) {
+  //   const existing = await this.userRepo.findOne({ where: { email: data.email } });
+  //   if (existing) throw new Error('Este correo ya está registrado');
+  
+  //   const salt = await bcrypt.genSalt();
+  //   const hashedPassword = await bcrypt.hash(data.password, salt);
+  
+  //   const role = await this.roleRepo.findOneBy({ id: 2 });
+  
+  //   const { password, ...rest } = data;
+  
+  //   const newUser = this.userRepo.create({
+  //     ...rest,
+  //     passwordHash: hashedPassword,
+  //     role,
+  //   });
+  
+  //   const saved = await this.userRepo.save(newUser);
+  
+  //   return this.userRepo.findOne({
+  //     where: { id: saved.id },
+  //     relations: ['role'],
+  //   });
+  // }
+  async create(data: Partial<User> & { password: string; role?: { id: number } }) {
     const existing = await this.userRepo.findOne({ where: { email: data.email } });
     if (existing) throw new Error('Este correo ya está registrado');
   
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
   
-    const role = await this.roleRepo.findOneBy({ id: 2 });
+    // Si se pasa un rol, úsalo; si no, asigna el id = 2
+    const roleId = data.role?.id ?? 2;
+    const role = await this.roleRepo.findOneBy({ id: roleId });
+    if (!role) throw new Error(`Rol con ID ${roleId} no encontrado`);
   
-    const { password, ...rest } = data;
+    const { password, role: _, ...rest } = data;
   
     const newUser = this.userRepo.create({
       ...rest,

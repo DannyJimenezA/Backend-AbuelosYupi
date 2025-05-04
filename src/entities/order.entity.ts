@@ -40,5 +40,8 @@ import {
   
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @Column({ nullable: true })
+    deliveryCode: string;
   }
   
