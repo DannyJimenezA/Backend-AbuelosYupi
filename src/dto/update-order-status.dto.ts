@@ -8,4 +8,6 @@ export class UpdateOrderStatusDto {
   @IsOptional()
   @IsString()
   deliveryCode?: string;
+
+  repartidorId?: number;
 }
