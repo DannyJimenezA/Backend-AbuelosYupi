@@ -291,56 +291,64 @@ export class OrderService {
     return { message: `Estado actualizado a '${dto.status}'` };
   }
   async findAvailableOrdersForDeliveryPerson(
-    deliveryPersonId: number,
-    status?: string,
-  ): Promise<Order[]> {
-    const deliveryPerson = await this.userRepo.findOne({
-      where: { id: deliveryPersonId },
-      relations: ['role'],
+  deliveryPersonId: number,
+  status?: string,
+): Promise<Order[]> {
+  const deliveryPerson = await this.userRepo.findOne({
+    where: { id: deliveryPersonId },
+    relations: ['role'],
+  });
+
+  if (!deliveryPerson || deliveryPerson.role.id !== 3) {
+    throw new ForbiddenException('No tienes permisos para ver pedidos disponibles');
+  }
+
+  const query = this.orderRepo
+    .createQueryBuilder('order')
+    .leftJoinAndSelect('order.user', 'user')
+    .leftJoinAndSelect('order.status', 'status')
+    .leftJoinAndSelect('order.items', 'items')
+    .leftJoinAndSelect('items.product', 'product')
+    .leftJoinAndSelect('order.deliveryPerson', 'deliveryPerson')
+    .orderBy('order.id', 'DESC');
+
+  // Normalizamos el nombre del status por si viene como en_camino
+  const statusMap: Record<string, string> = {
+    en_camino: 'en camino',
+    pendiente: 'pendiente',
+    entregado: 'entregado',
+    cancelado: 'cancelado',
+    preparando: 'preparando',
+  };
+
+  const normalized = status
+    ? statusMap[status.toLowerCase().trim()] || status.toLowerCase().trim()
+    : null;
+
+  // 🧠 Lógica combinada
+  if (!normalized) {
+    query.andWhere(
+      `(status.name = :pendiente AND order.deliveryPersonId IS NULL) OR 
+       (order.deliveryPersonId = :userId AND status.name IN (:...assignedStatuses))`,
+      {
+        pendiente: 'pendiente',
+        userId: deliveryPersonId,
+        assignedStatuses: ['en camino', 'entregado'],
+      },
+    );
+  } else if (normalized === 'pendiente') {
+    query.andWhere('status.name = :status AND order.deliveryPersonId IS NULL', {
+      status: normalized,
     });
-  
-    if (!deliveryPerson || deliveryPerson.role.id !== 3) {
-      throw new ForbiddenException('No tienes permisos para ver pedidos disponibles');
-    }
-  
-    const allOrders = await this.orderRepo.find({
-      relations: ['user', 'status', 'items', 'items.product', 'deliveryPerson'],
-      order: { id: 'DESC' },
-    });
-  
-    return allOrders.filter((order) => {
-      const estado = order.status?.name?.toLowerCase().trim();
-      const asignado = order.deliveryPerson?.id === deliveryPersonId;
-      const noAsignado = order.deliveryPerson === null;
-  
-      if (status) {
-        // ✅ Normaliza alias como "en_camino" => "en camino"
-        const filtroMap: Record<string, string> = {
-          'en_camino': 'en camino',
-          'preparando': 'preparando',
-          'entregado': 'entregado',
-          'pendiente': 'pendiente',
-          'cancelado': 'cancelado',
-        };
-  
-        const filtro = filtroMap[status.toLowerCase().trim()] || status.toLowerCase().trim();
-  
-        if (filtro === 'pendiente') {
-          return estado === 'pendiente' && (noAsignado || asignado);
-        }
-  
-        return estado === filtro && asignado;
-      }
-  
-      // 🟡 Si no se manda ningún filtro, mostrar:
-      // - Pendientes sin asignar
-      // - En camino asignados al repartidor
-      return (
-        (estado === 'pendiente' && (noAsignado || asignado)) ||
-        (estado === 'en camino' && asignado)
-      );
+  } else {
+    query.andWhere('status.name = :status AND order.deliveryPersonId = :userId', {
+      status: normalized,
+      userId: deliveryPersonId,
     });
   }
+
+  return query.getMany();
+}
   
 async findOrdersByStatus(userId: number, statusName: string) {
   const user = await this.userRepo.findOne({
