@@ -212,12 +212,12 @@ export class OrderService {
       const code = randomBytes(3).toString('hex'); // Código de entrega
       const order = this.orderRepo.create({
         user: { id: userId },
-        deliveryPerson: { id: 3 }, // 👈 asignación automática
-        status,
+        status: status,
         totalPrice,
         items,
-        deliveryCode: code,
         deliveryAddress: 'Dirección por confirmar',
+        deliveryPerson: null,        // ✅ No asignado aún
+        deliveryCode: null,
       });
 
       return await this.orderRepo.save(order);
@@ -246,56 +246,124 @@ export class OrderService {
   }
 
   // ✅ Admin asigna un repartidor
-  async assignDelivery(orderId: number, deliveryPersonId: number) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
-      relations: ['deliveryPerson', 'status'],
-    });
-
-    if (!order) throw new NotFoundException('Pedido no encontrado');
-
-    const repartidor = await this.userRepo.findOne({ where: { id: deliveryPersonId } });
-    if (!repartidor) throw new NotFoundException('Repartidor no encontrado');
-
-    const code = randomBytes(3).toString('hex'); // Ej: 'a9f3b1'
-    const status = await this.orderStatusService.findByName('pendiente');
-
-    order.deliveryPerson = repartidor;
-    order.deliveryCode = code;
-    order.status = status;
-
-    await this.orderRepo.save(order);
-
-    return {
-      message: 'Pedido asignado exitosamente',
-      deliveryCode: code,
-    };
-  }
-
+  
   // ✅ Repartidor actualiza el estado
   async updateOrderStatus(orderId: number, repartidorId: number, dto: UpdateOrderStatusDto) {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
       relations: ['deliveryPerson', 'status'],
     });
-
+  
     if (!order) throw new NotFoundException('Pedido no encontrado');
-    if (!order.deliveryPerson || order.deliveryPerson.id !== repartidorId) {
-      throw new ForbiddenException('No tienes permiso para modificar este pedido');
+  
+    // Si el estado es "en_camino" y aún no hay repartidor, se asigna
+    if (dto.status === 'en_camino') {
+      if (!order.deliveryPerson) {
+        const repartidor = await this.userRepo.findOneBy({ id: repartidorId });
+        if (!repartidor) throw new NotFoundException('Repartidor no encontrado');
+  
+        order.deliveryPerson = repartidor;
+        order.deliveryCode = randomBytes(3).toString('hex');
+      } else if (order.deliveryPerson.id !== repartidorId) {
+        throw new ForbiddenException('Este pedido ya fue tomado por otro repartidor');
+      }
+    } else {
+      // Para cualquier otro cambio, valida que sea el repartidor asignado
+      if (!order.deliveryPerson || order.deliveryPerson.id !== repartidorId) {
+        throw new ForbiddenException('No tienes permiso para modificar este pedido');
+      }
     }
-
+  
+    // Validación especial si se entrega
     if (dto.status === 'entregado') {
-      if (!dto.deliveryCode || dto.deliveryCode !== order.deliveryCode) {
+      if (!order.deliveryCode || dto.deliveryCode !== order.deliveryCode) {
         throw new BadRequestException('Código de entrega incorrecto');
       }
     }
-
-    const newStatus = await this.orderStatusService.findByName(dto.status);
+  
+    const newStatus = await this.orderStatusService.findByName(
+      dto.status.replace('_', ' ')
+    );
     order.status = newStatus;
-
+  
     await this.orderRepo.save(order);
-
+  
     return { message: `Estado actualizado a '${dto.status}'` };
   }
+  async findAvailableOrdersForDeliveryPerson(
+    deliveryPersonId: number,
+    status?: string,
+  ): Promise<Order[]> {
+    const deliveryPerson = await this.userRepo.findOne({
+      where: { id: deliveryPersonId },
+      relations: ['role'],
+    });
+  
+    if (!deliveryPerson || deliveryPerson.role.id !== 3) {
+      throw new ForbiddenException('No tienes permisos para ver pedidos disponibles');
+    }
+  
+    const allOrders = await this.orderRepo.find({
+      relations: ['user', 'status', 'items', 'items.product', 'deliveryPerson'],
+      order: { id: 'DESC' },
+    });
+  
+    return allOrders.filter((order) => {
+      const estado = order.status?.name?.toLowerCase().trim();
+      const asignado = order.deliveryPerson?.id === deliveryPersonId;
+      const noAsignado = order.deliveryPerson === null;
+  
+      if (status) {
+        // ✅ Normaliza alias como "en_camino" => "en camino"
+        const filtroMap: Record<string, string> = {
+          'en_camino': 'en camino',
+          'preparando': 'preparando',
+          'entregado': 'entregado',
+          'pendiente': 'pendiente',
+          'cancelado': 'cancelado',
+        };
+  
+        const filtro = filtroMap[status.toLowerCase().trim()] || status.toLowerCase().trim();
+  
+        if (filtro === 'pendiente') {
+          return estado === 'pendiente' && (noAsignado || asignado);
+        }
+  
+        return estado === filtro && asignado;
+      }
+  
+      // 🟡 Si no se manda ningún filtro, mostrar:
+      // - Pendientes sin asignar
+      // - En camino asignados al repartidor
+      return (
+        (estado === 'pendiente' && (noAsignado || asignado)) ||
+        (estado === 'en camino' && asignado)
+      );
+    });
+  }
+  
+async findOrdersByStatus(userId: number, statusName: string) {
+  const user = await this.userRepo.findOne({
+    where: { id: userId },
+    relations: ['role'],
+  });
+
+  if (!user || user.role.id !== 3) {
+    throw new ForbiddenException('No tienes permiso para ver estos pedidos');
+  }
+
+  const orders = await this.orderRepo.find({
+    where: [
+      {
+        deliveryPerson: { id: userId },
+        status: { name: statusName },
+      },
+    ],
+    relations: ['user', 'status', 'items', 'items.product', 'deliveryPerson'],
+    order: { id: 'DESC' },
+  });
+
+  return orders;
+}
 }
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Patch, ParseIntPipe, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Patch, ParseIntPipe, Request, Query } from '@nestjs/common';
 import { OrderService } from '../service/order.service';
 import { CreateOrderDto } from 'src/dto/create-order.dto';
 import { AssignDeliveryDto } from 'src/dto/assign-delivery.dto';
@@ -12,6 +12,14 @@ export class OrderController {
   findAll() {
     return this.orderService.findAll();
   }
+  @Get('delivery/by-status')
+findByStatus(
+  @Query('userId') userId: number,
+  @Query('status') status: string,
+) {
+  return this.orderService.findOrdersByStatus(userId, status);
+}
+
 
   @Get(':id')
   findOne(@Param('id') id: number) {
@@ -47,24 +55,24 @@ export class OrderController {
     return this.orderService.remove(+id);
   }
 
-  @Patch(':id/assign')
-  assignDelivery(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AssignDeliveryDto,
-  ) {
-    return this.orderService.assignDelivery(id, dto.deliveryPersonId);
-  }
-
+  
   /**
    * REPARTIDOR actualiza estado del pedido
    */
   @Patch(':id/status')
-  updateStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateOrderStatusDto,
-    @Request() req,
-  ) {
-    const userId = req.user.id;
-    return this.orderService.updateOrderStatus(id, userId, dto);
-  }
+updateStatus(
+  @Param('id', ParseIntPipe) orderId: number,
+  @Body() body: UpdateOrderStatusDto,
+) {
+  const { repartidorId, status, deliveryCode } = body;
+  return this.orderService.updateOrderStatus(orderId, repartidorId, { status, deliveryCode });
+}
+@Get('delivery/available')
+findAvailableForDelivery(
+  @Query('userId') userId: number,
+  @Query('status') status?: string, // 👈 estado opcional
+) {
+  return this.orderService.findAvailableOrdersForDeliveryPerson(userId, status);
+}
+
 }
