@@ -217,7 +217,7 @@ export class OrderService {
         items,
         deliveryAddress: 'Dirección por confirmar',
         deliveryPerson: null,        // ✅ No asignado aún
-        deliveryCode: null,
+        deliveryCode: randomBytes(3).toString('hex'),
       });
 
       return await this.orderRepo.save(order);
@@ -249,47 +249,51 @@ export class OrderService {
   
   // ✅ Repartidor actualiza el estado
   async updateOrderStatus(orderId: number, repartidorId: number, dto: UpdateOrderStatusDto) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId },
-      relations: ['deliveryPerson', 'status'],
-    });
-  
-    if (!order) throw new NotFoundException('Pedido no encontrado');
-  
-    // Si el estado es "en_camino" y aún no hay repartidor, se asigna
-    if (dto.status === 'en_camino') {
-      if (!order.deliveryPerson) {
-        const repartidor = await this.userRepo.findOneBy({ id: repartidorId });
-        if (!repartidor) throw new NotFoundException('Repartidor no encontrado');
-  
-        order.deliveryPerson = repartidor;
-        order.deliveryCode = randomBytes(3).toString('hex');
-      } else if (order.deliveryPerson.id !== repartidorId) {
-        throw new ForbiddenException('Este pedido ya fue tomado por otro repartidor');
-      }
-    } else {
-      // Para cualquier otro cambio, valida que sea el repartidor asignado
-      if (!order.deliveryPerson || order.deliveryPerson.id !== repartidorId) {
-        throw new ForbiddenException('No tienes permiso para modificar este pedido');
-      }
-    }
-  
-    // Validación especial si se entrega
-    if (dto.status === 'entregado') {
-      if (!order.deliveryCode || dto.deliveryCode !== order.deliveryCode) {
-        throw new BadRequestException('Código de entrega incorrecto');
-      }
-    }
-  
-    const newStatus = await this.orderStatusService.findByName(
-      dto.status.replace('_', ' ')
-    );
-    order.status = newStatus;
-  
-    await this.orderRepo.save(order);
-  
-    return { message: `Estado actualizado a '${dto.status}'` };
+  const order = await this.orderRepo.findOne({
+    where: { id: orderId },
+    relations: ['deliveryPerson', 'status'],
+  });
+
+  if (!order) {
+    throw new NotFoundException('Pedido no encontrado');
   }
+
+  // ✅ Asignar repartidor si el estado es "en_camino" y aún no tiene
+  if (dto.status === 'en_camino') {
+    if (!order.deliveryPerson) {
+      const repartidor = await this.userRepo.findOneBy({ id: repartidorId });
+      if (!repartidor) {
+        throw new NotFoundException('Repartidor no encontrado');
+      }
+      order.deliveryPerson = repartidor;
+    } else if (order.deliveryPerson.id !== repartidorId) {
+      throw new ForbiddenException('Este pedido ya fue tomado por otro repartidor');
+    }
+  } else {
+    // ✅ Validar que el repartidor sea el asignado para cualquier otro estado
+    if (!order.deliveryPerson || order.deliveryPerson.id !== repartidorId) {
+      throw new ForbiddenException('No tienes permiso para modificar este pedido');
+    }
+  }
+
+  // ✅ Validación especial si se marca como "entregado"
+  if (dto.status === 'entregado') {
+    if (!order.deliveryCode || dto.deliveryCode !== order.deliveryCode) {
+      throw new BadRequestException('Código de entrega incorrecto');
+    }
+  }
+
+  const newStatus = await this.orderStatusService.findByName(
+    dto.status.replace('_', ' ')
+  );
+
+  order.status = newStatus;
+
+  await this.orderRepo.save(order);
+
+  return { message: `Estado actualizado a '${dto.status}'` };
+}
+
   async findAvailableOrdersForDeliveryPerson(
   deliveryPersonId: number,
   status?: string,
