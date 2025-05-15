@@ -75,4 +75,8 @@ findAvailableForDelivery(
   return this.orderService.findAvailableOrdersForDeliveryPerson(userId, status);
 }
 
+@Get('admin/all')
+getAllForAdmin() {
+  return this.findAll();
+}
 }
