@@ -25,79 +25,32 @@ export class UserService {
   async findByEmail(email: string) {
     return this.userRepo.findOne({ where: { email }, relations: ['role'] });
   }
+  async create(data: Partial<User> & { password: string; roleId?: number }) {
+  const existing = await this.userRepo.findOne({ where: { email: data.email } });
+  if (existing) throw new Error('Este correo ya está registrado');
 
-  // async create(data: Partial<User>) {
-  //   const salt = await bcrypt.genSalt();
-  //   const hashedPassword = await bcrypt.hash(data.passwordHash, salt);
+  const salt = await bcrypt.genSalt();
+  const hashedPassword = await bcrypt.hash(data.password, salt);
 
-  //   const role = await this.roleRepo.findOneBy({ id: 2 }); 
+  const roleId = data.roleId ?? 2; // 👈 Usa roleId plano, no data.role?.id
+  const role = await this.roleRepo.findOneBy({ id: roleId });
+  if (!role) throw new Error(`Rol con ID ${roleId} no encontrado`);
 
-  //   const newUser = this.userRepo.create({
-  //     ...data,
-  //     passwordHash: hashedPassword,
-  //     role,
-  //   });
+  const { password, roleId: _, ...rest } = data;
 
-  //   const saved = await this.userRepo.save(newUser);
+  const newUser = this.userRepo.create({
+    ...rest,
+    passwordHash: hashedPassword,
+    role,
+  });
 
-  //   // ✅ Devuelve con relación de rol para Flutter
-  //   return this.userRepo.findOne({
-  //     where: { id: saved.id },
-  //     relations: ['role'],
-  //   });
+  const saved = await this.userRepo.save(newUser);
+  return this.userRepo.findOne({
+    where: { id: saved.id },
+    relations: ['role'],
+  });
+}
 
-  // }
-  // async create(data: Partial<User> & { password: string }) {
-  //   const existing = await this.userRepo.findOne({ where: { email: data.email } });
-  //   if (existing) throw new Error('Este correo ya está registrado');
-  
-  //   const salt = await bcrypt.genSalt();
-  //   const hashedPassword = await bcrypt.hash(data.password, salt);
-  
-  //   const role = await this.roleRepo.findOneBy({ id: 2 });
-  
-  //   const { password, ...rest } = data;
-  
-  //   const newUser = this.userRepo.create({
-  //     ...rest,
-  //     passwordHash: hashedPassword,
-  //     role,
-  //   });
-  
-  //   const saved = await this.userRepo.save(newUser);
-  
-  //   return this.userRepo.findOne({
-  //     where: { id: saved.id },
-  //     relations: ['role'],
-  //   });
-  // }
-  async create(data: Partial<User> & { password: string; role?: { id: number } }) {
-    const existing = await this.userRepo.findOne({ where: { email: data.email } });
-    if (existing) throw new Error('Este correo ya está registrado');
-  
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(data.password, salt);
-  
-    // Si se pasa un rol, úsalo; si no, asigna el id = 2
-    const roleId = data.role?.id ?? 2;
-    const role = await this.roleRepo.findOneBy({ id: roleId });
-    if (!role) throw new Error(`Rol con ID ${roleId} no encontrado`);
-  
-    const { password, role: _, ...rest } = data;
-  
-    const newUser = this.userRepo.create({
-      ...rest,
-      passwordHash: hashedPassword,
-      role,
-    });
-  
-    const saved = await this.userRepo.save(newUser);
-  
-    return this.userRepo.findOne({
-      where: { id: saved.id },
-      relations: ['role'],
-    });
-  }
   
   
 
