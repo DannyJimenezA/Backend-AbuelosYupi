@@ -17,6 +17,7 @@ import { ProductStatusModule } from './module/product-status.module';
 import { AuthController } from './controller/auth.controller';
 import { PublicModule } from './module/public.module';
 import { DiscountModule } from './module/discount.module';
+import { PromotionModule } from './module/promotion.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DiscountModule } from './module/discount.module';
     ProductStatusModule,
     PublicModule,
     DiscountModule,
+     PromotionModule,
   ],
   controllers: [AppController, AuthController],
   providers: [AppService],
