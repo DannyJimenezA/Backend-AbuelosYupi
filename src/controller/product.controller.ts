@@ -9,6 +9,7 @@ import {
   Put,
   Delete,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { ProductService } from '../service/product.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -106,4 +107,11 @@ update(@Param('id') id: number, @Body() body: Partial<Product>) {
   delete(@Param('id') id: number) {
     return this.service.delete(+id);
   }
+  @Patch(':id')
+async updateStock(
+  @Param('id') id: number,
+  @Body() body: Partial<Product>,
+) {
+  return this.service.update(id, body);
+}
 }
