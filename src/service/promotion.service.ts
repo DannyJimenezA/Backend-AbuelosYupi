@@ -89,4 +89,24 @@ async create(data: CreatePromotionDto) {
     }
     return this.promoRepo.delete(id);
   }
+  async decreaseStock(updates: { productId: number; quantity: number }[]) {
+  for (const { productId, quantity } of updates) {
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+
+    if (!product) {
+      throw new NotFoundException(`Producto con id ${productId} no encontrado`);
+    }
+
+    if (product.stock < quantity) {
+      throw new BadRequestException(`Stock insuficiente para el producto ${product.name}`);
+    }
+
+    product.stock -= quantity;
+    await this.productRepo.save(product);
+  }
+
+  return { success: true };
+}
+
+
 }

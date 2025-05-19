@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { PromotionService } from "src/service/promotion.service";
 import { CreatePromotionDto } from "src/dto/create-promotion.dto";
+import { UpdateStockDto } from "src/dto/update-stock-dto";
 
 @Controller('promotions')
 export class PromotionController {
@@ -36,4 +37,8 @@ export class PromotionController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.promoService.delete(id);
   }
+  @Post('decrease-stock')
+async decreaseStock(@Body() body: UpdateStockDto) {
+  return this.promoService.decreaseStock(body.updates);
+}
 }

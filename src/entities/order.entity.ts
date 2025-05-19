@@ -11,6 +11,7 @@ import {
   import { User } from './user.entity';
   import { OrderStatus } from './order-status.entity';
   import { OrderItem } from './order-item.entity';
+import { OrderPromotion } from './oder-promotion.entity';
   
   @Entity('orders')
   export class Order {
@@ -43,5 +44,7 @@ import {
 
     @Column({ nullable: true })
     deliveryCode: string;
+    @OneToMany(() => OrderPromotion, op => op.order, { cascade: true })
+promotions: OrderPromotion[];
   }
   
