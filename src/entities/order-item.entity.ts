@@ -31,6 +31,7 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, Column } from 'typeorm';
 import { Product } from './product.entity';
 import { Order } from './order.entity';
+import { Promotion } from './promotion.entity';
 
 @Entity()
 export class OrderItem {
@@ -48,4 +49,6 @@ export class OrderItem {
 
   @Column('decimal', { precision: 10, scale: 2 })
   subtotal: number;
+  @ManyToOne(() => Promotion, { eager: true, nullable: true })  // Relación con Promotion
+  promotion: Promotion;
 }
