@@ -8,10 +8,11 @@ import { User } from '../entities/user.entity';
 import { OrderStatus } from '../entities/order-status.entity';
 import { Product } from 'src/entities/product.entity';
 import { OrderStatusModule } from './order-status.module';
+import { Promotion } from 'src/entities/promotion.entity';
 import { OrderPromotion } from 'src/entities/oder-promotion.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderItem,Product, User, OrderStatus, OrderPromotion,]),
+  imports: [TypeOrmModule.forFeature([Order, OrderItem,Product, User, OrderStatus, Promotion, OrderPromotion]),
   OrderStatusModule,
 ],
   providers: [OrderService],

@@ -163,23 +163,147 @@ export class OrderService {
     @InjectRepository(OrderPromotion)
 private promoRepo: Repository<OrderPromotion>,
 
+@InjectRepository(Promotion)
+private promotionRepo: Repository<Promotion>,
+
     private readonly orderStatusService: OrderStatusService, // Para obtener estados
   ) {}
 
   findAll() {
-    return this.orderRepo.find({
-      relations: ['user', 'status', 'items', 'items.product', 'deliveryPerson'],
-    });
-  }
+  return this.orderRepo.find({
+    relations: [
+      'user',
+      'status',
+      'items',
+      'items.product',
+      'items.promotion',
+      'items.promotion.products', // 👈 necesario para combos
+      'deliveryPerson',
+    ],
+  });
+}
 
   findOne(id: number) {
-    return this.orderRepo.findOne({
-      where: { id },
-      relations: ['user', 'status', 'items', 'items.product', 'deliveryPerson'],
-    });
-  }
+  return this.orderRepo.findOne({
+    where: { id },
+    relations: [
+      'user',
+      'status',
+      'items',
+      'items.product',
+      'items.promotion',
+      'items.promotion.products',
+      'deliveryPerson',
+    ],
+  });
+}
 
- async createOrder(
+
+//  async createOrder(
+//   userId: number,
+//   itemsData: { productId: number; quantity: number; price: number }[],
+//   combosData?: { promotionId: number; quantity: number; price: number }[],
+// ) {
+//   try {
+//     const orderItems: OrderItem[] = [];
+//     const orderPromotions: OrderPromotion[] = [];
+//     let totalPrice = 0;
+
+//     // 🟢 Guardar productos normales
+//     for (const item of itemsData) {
+//       const product = await this.productRepo.findOne({ where: { id: item.productId } });
+//       if (!product) {
+//         throw new BadRequestException(`Producto con ID ${item.productId} no encontrado`);
+//       }
+
+//       if (product.stock < item.quantity) {
+//         throw new BadRequestException(`Stock insuficiente para el producto ${product.name}`);
+//       }
+
+//       product.stock -= item.quantity;
+//       await this.productRepo.save(product);
+
+//       const subtotal = item.price * item.quantity;
+//       totalPrice += subtotal;
+
+//       const orderItem = this.itemRepo.create({
+//         product,
+//         quantity: item.quantity,
+//         subtotal,
+//       });
+
+//       orderItems.push(orderItem);
+//     }
+
+//     await this.itemRepo.save(orderItems);
+
+//     // 🟣 Guardar combos si vienen
+//     if (combosData && combosData.length > 0) {
+//       for (const combo of combosData) {
+//         const promo = await this.promoRepo.manager.findOne(Promotion, {
+//           where: { id: combo.promotionId },
+//           relations: ['products'],
+//         });
+
+//         if (!promo) {
+//           throw new BadRequestException(`Promoción con ID ${combo.promotionId} no encontrada`);
+//         }
+
+//         // 🧮 Descontar stock de cada producto del combo * cantidad del combo
+//         for (const prod of promo.products) {
+//           if (prod.stock < combo.quantity) {
+//             throw new BadRequestException(
+//               `Stock insuficiente en combo: ${prod.name}`,
+//             );
+//           }
+
+//           prod.stock -= combo.quantity;
+//           await this.productRepo.save(prod);
+//         }
+
+//         totalPrice += combo.price;
+
+//         const orderPromo = this.promoRepo.create({
+//           promotion: { id: combo.promotionId },
+//           quantity: combo.quantity,
+//           price: combo.price,
+//           order: null, // Se setea más abajo
+//         });
+
+//         orderPromotions.push(orderPromo);
+//       }
+//     }
+
+//     // 🧾 Crear el pedido
+//     const status = await this.orderStatusService.findByName('pendiente');
+
+//     const order = this.orderRepo.create({
+//       user: { id: userId },
+//       status,
+//       totalPrice,
+//       items: orderItems,
+//       deliveryAddress: 'Dirección por confirmar',
+//       deliveryPerson: null,
+//       deliveryCode: randomBytes(3).toString('hex'),
+//     });
+
+//     const savedOrder = await this.orderRepo.save(order);
+
+//     // ✅ Asociar combos al pedido
+//     for (const promo of orderPromotions) {
+//       promo.order = savedOrder;
+//       await this.promoRepo.save(promo);
+//     }
+
+//     return savedOrder;
+//   } catch (error) {
+//     console.error('❌ Error en createOrder:', error);
+//     throw new BadRequestException(
+//       error.message || 'Ocurrió un error al procesar el pedido',
+//     );
+//   }
+// }
+async createOrder(
   userId: number,
   itemsData: { productId: number; quantity: number; price: number }[],
   combosData?: { promotionId: number; quantity: number; price: number }[],
@@ -189,16 +313,11 @@ private promoRepo: Repository<OrderPromotion>,
     const orderPromotions: OrderPromotion[] = [];
     let totalPrice = 0;
 
-    // 🟢 Guardar productos normales
+    // 🟢 Procesar productos normales
     for (const item of itemsData) {
       const product = await this.productRepo.findOne({ where: { id: item.productId } });
-      if (!product) {
-        throw new BadRequestException(`Producto con ID ${item.productId} no encontrado`);
-      }
-
-      if (product.stock < item.quantity) {
-        throw new BadRequestException(`Stock insuficiente para el producto ${product.name}`);
-      }
+      if (!product) throw new BadRequestException(`Producto con ID ${item.productId} no encontrado`);
+      if (product.stock < item.quantity) throw new BadRequestException(`Stock insuficiente para ${product.name}`);
 
       product.stock -= item.quantity;
       await this.productRepo.save(product);
@@ -215,28 +334,19 @@ private promoRepo: Repository<OrderPromotion>,
       orderItems.push(orderItem);
     }
 
-    await this.itemRepo.save(orderItems);
+    await this.itemRepo.save(orderItems); // Guardar items
 
-    // 🟣 Guardar combos si vienen
+    // 🟣 Procesar promociones
     if (combosData && combosData.length > 0) {
       for (const combo of combosData) {
-        const promo = await this.promoRepo.manager.findOne(Promotion, {
+        const promo = await this.promotionRepo.findOne({
           where: { id: combo.promotionId },
           relations: ['products'],
         });
+        if (!promo) throw new BadRequestException(`Promoción con ID ${combo.promotionId} no encontrada`);
 
-        if (!promo) {
-          throw new BadRequestException(`Promoción con ID ${combo.promotionId} no encontrada`);
-        }
-
-        // 🧮 Descontar stock de cada producto del combo * cantidad del combo
         for (const prod of promo.products) {
-          if (prod.stock < combo.quantity) {
-            throw new BadRequestException(
-              `Stock insuficiente en combo: ${prod.name}`,
-            );
-          }
-
+          if (prod.stock < combo.quantity) throw new BadRequestException(`Stock insuficiente en combo: ${prod.name}`);
           prod.stock -= combo.quantity;
           await this.productRepo.save(prod);
         }
@@ -247,16 +357,15 @@ private promoRepo: Repository<OrderPromotion>,
           promotion: { id: combo.promotionId },
           quantity: combo.quantity,
           price: combo.price,
-          order: null, // Se setea más abajo
+          order: null, // lo asocias luego
         });
 
         orderPromotions.push(orderPromo);
       }
     }
 
-    // 🧾 Crear el pedido
+    // 🧾 Crear pedido
     const status = await this.orderStatusService.findByName('pendiente');
-
     const order = this.orderRepo.create({
       user: { id: userId },
       status,
@@ -269,7 +378,7 @@ private promoRepo: Repository<OrderPromotion>,
 
     const savedOrder = await this.orderRepo.save(order);
 
-    // ✅ Asociar combos al pedido
+    // ✅ Asociar promociones al pedido
     for (const promo of orderPromotions) {
       promo.order = savedOrder;
       await this.promoRepo.save(promo);
@@ -278,19 +387,25 @@ private promoRepo: Repository<OrderPromotion>,
     return savedOrder;
   } catch (error) {
     console.error('❌ Error en createOrder:', error);
-    throw new BadRequestException(
-      error.message || 'Ocurrió un error al procesar el pedido',
-    );
+    throw new BadRequestException(error.message || 'Ocurrió un error al procesar el pedido');
   }
 }
 
   findByUserId(userId: number) {
-    return this.orderRepo.find({
-      where: { user: { id: userId } },
-      relations: ['user', 'status', 'items', 'items.product'],
-      order: { id: 'DESC' },
-    });
-  }
+  return this.orderRepo.find({
+    where: { user: { id: userId } },
+    relations: [
+      'user',
+      'status',
+      'items',
+      'items.product',
+      'items.promotion',
+      'items.promotion.products',
+    ],
+    order: { id: 'DESC' },
+  });
+}
+
 
   update(id: number, data: Partial<Order>) {
     return this.orderRepo.update(id, data);
@@ -369,7 +484,10 @@ private promoRepo: Repository<OrderPromotion>,
     .leftJoinAndSelect('order.items', 'items')
     .leftJoinAndSelect('items.product', 'product')
     .leftJoinAndSelect('order.deliveryPerson', 'deliveryPerson')
-    .orderBy('order.id', 'DESC');
+    .orderBy('order.id', 'DESC')
+    .leftJoinAndSelect('items.promotion', 'promotion')
+    .leftJoinAndSelect('promotion.products', 'promotionProducts');
+
 
   // Normalizamos el nombre del status por si viene como en_camino
   const statusMap: Record<string, string> = {
