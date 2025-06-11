@@ -10,6 +10,12 @@ export class UserController {
     return this.service.findAll();
   }
 
+  @Get('role/:roleId')
+findByRole(@Param('roleId') roleId: number) {
+  return this.service.findByRole(+roleId);
+}
+
+
   @Get(':id')
   findOne(@Param('id') id: number) {
     return this.service.findOne(+id);

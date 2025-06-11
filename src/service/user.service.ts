@@ -61,4 +61,18 @@ export class UserService {
   delete(id: number) {
     return this.userRepo.delete(id);
   }
+
+
+
+
+  async findByRole(roleId: number) {
+  return this.userRepo.find({
+    where: { role: { id: roleId } },
+    relations: ['role'],
+  });
 }
+
+}
+
+
+
