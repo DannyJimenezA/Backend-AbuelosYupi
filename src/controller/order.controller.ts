@@ -79,4 +79,10 @@ findAvailableForDelivery(
 getAllForAdmin() {
   return this.findAll();
 }
+
+@Delete(':id/cancel')
+async cancelOrder(@Param('id') id: number) {
+  return this.orderService.cancelOrder(+id); // Asegura que sea tipo number
+}
+
 }

@@ -5,6 +5,9 @@ import {
   Body,
   UploadedFile,
   UseInterceptors,
+  Param,
+  ParseIntPipe,
+  Put,
 } from '@nestjs/common';
 import { CategoryService } from '../service/category.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -19,6 +22,12 @@ export class CategoryController {
   findAll() {
     return this.categoryService.findAll();
   }
+
+  @Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+  return this.categoryService.findOne(id);
+}
+
 
   @Post()
   @UseInterceptors(
@@ -47,4 +56,37 @@ export class CategoryController {
 
     return this.categoryService.create(data);
   }
+
+  @Put(':id')
+@UseInterceptors(
+  FileInterceptor('image', {
+    storage: diskStorage({
+      destination: './uploads/categories',
+      filename: (req, file, cb) => {
+        const ext = extname(file.originalname);
+        const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        cb(null, fileName);
+      },
+    }),
+  }),
+)
+async update(
+  @Param('id', ParseIntPipe) id: number,
+  @UploadedFile() file: Express.Multer.File,
+  @Body() body: any,
+) {
+  const imageUrl = file ? `/uploads/categories/${file.filename}` : undefined;
+
+  const data: any = {
+    name: body.name,
+    description: body.description,
+  };
+
+  if (imageUrl) {
+    data.imageUrl = imageUrl;
+  }
+
+  return this.categoryService.update(id, data);
+}
+
 }

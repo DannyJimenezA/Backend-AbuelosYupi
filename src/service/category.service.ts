@@ -15,4 +15,15 @@ export class CategoryService {
   create(data: Partial<Category>) {
     return this.repo.save(data);
   }
+
+  async update(id: number, data: Partial<Category>) {
+  await this.repo.update(id, data);
+  return this.repo.findOne({ where: { id } });
+}
+
+
+findOne(id: number) {
+  return this.repo.findOne({ where: { id } });
+}
+
 }
