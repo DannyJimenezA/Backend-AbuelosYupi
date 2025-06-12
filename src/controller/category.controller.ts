@@ -1,18 +1,19 @@
 import {
-  Controller,
-  Post,
-  Get,
   Body,
-  UploadedFile,
-  UseInterceptors,
+  Controller,
+  Delete,
+  Get,
   Param,
   ParseIntPipe,
+  Post,
   Put,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { CategoryService } from '../service/category.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { CategoryService } from '../service/category.service';
 
 @Controller('categories')
 export class CategoryController {
@@ -24,10 +25,9 @@ export class CategoryController {
   }
 
   @Get(':id')
-findOne(@Param('id', ParseIntPipe) id: number) {
-  return this.categoryService.findOne(id);
-}
-
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.categoryService.findOne(id);
+  }
 
   @Post()
   @UseInterceptors(
@@ -42,10 +42,7 @@ findOne(@Param('id', ParseIntPipe) id: number) {
       }),
     }),
   )
-  async create(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: any,
-  ) {
+  async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
     const imageUrl = file ? `/uploads/categories/${file.filename}` : null;
 
     const data = {
@@ -58,35 +55,39 @@ findOne(@Param('id', ParseIntPipe) id: number) {
   }
 
   @Put(':id')
-@UseInterceptors(
-  FileInterceptor('image', {
-    storage: diskStorage({
-      destination: './uploads/categories',
-      filename: (req, file, cb) => {
-        const ext = extname(file.originalname);
-        const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-        cb(null, fileName);
-      },
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/categories',
+        filename: (req, file, cb) => {
+          const ext = extname(file.originalname);
+          const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+          cb(null, fileName);
+        },
+      }),
     }),
-  }),
-)
-async update(
-  @Param('id', ParseIntPipe) id: number,
-  @UploadedFile() file: Express.Multer.File,
-  @Body() body: any,
-) {
-  const imageUrl = file ? `/uploads/categories/${file.filename}` : undefined;
+  )
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    const imageUrl = file ? `/uploads/categories/${file.filename}` : undefined;
 
-  const data: any = {
-    name: body.name,
-    description: body.description,
-  };
+    const data: any = {
+      name: body.name,
+      description: body.description,
+    };
 
-  if (imageUrl) {
-    data.imageUrl = imageUrl;
+    if (imageUrl) {
+      data.imageUrl = imageUrl;
+    }
+
+    return this.categoryService.update(id, data);
   }
 
-  return this.categoryService.update(id, data);
-}
-
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.categoryService.remove(id);
+  }
 }
